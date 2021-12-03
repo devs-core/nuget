@@ -1,0 +1,35 @@
+name: .NET
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+env:
+  DIRECTORY_SRC: './src'
+  BUILD_CONFIGURATION: 'Release'
+  GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }} 
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: dotnet build and publish
+      run: |
+        dotnet restore
+        dotnet build --configuration '${{ env.BUILD_CONFIGURATION }}'
+        dotnet pack -c '${{ env.BUILD_CONFIGURATION }}' --version-suffix $GITHUB_RUN_ID
+      working-directory: ${{ env.DIRECTORY_SRC }}
+    - name: Add NuGet sources
+      run: |
+        dotnet nuget add source https://nuget.pkg.github.com/${{ env.GITHUB_REPOSITORY_OWNER }}/index.json --name github
+        
+    - name: Nuget Push on Github
+      run: dotnet nuget push --source github --api-key ${{ secrets.ARQUITECTURA_DEPLOY }} --skip-duplicate bin/Release/*.nupkg
+      working-directory: ${{ env.DIRECTORY_SRC }}
